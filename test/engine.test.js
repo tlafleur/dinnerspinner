@@ -156,3 +156,16 @@ test('scaleFactor never shrinks a recipe unless scaleDown is on', async () => {
   assert.equal(effectiveServings(item, 2.5), 4);
   assert.equal(effectiveServings(item, 6), 6);
 });
+
+test('pickWeek honors theme nights', () => {
+  const st = state({ settings: { houseRules: [], wildcards: { 'w:takeout': true }, nights: ['mon', 'tue', 'wed'], themes: { tue: 'Mexican', wed: 'veg' } } });
+  let seed = 7; const rng = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  const slots = [{ day: 'mon', held: false, id: null }, { day: 'tue', held: false, id: null }, { day: 'wed', held: false, id: null }];
+  for (let i = 0; i < 15; i++) {
+    const ids = pickWeek(st, slots, {}, rng);
+    const tue = SEED_MEALS.find(m => m.id === ids[1]); const wed = SEED_MEALS.find(m => m.id === ids[2]);
+    assert.equal(tue.cuisine, 'Mexican');
+    assert.ok(wed.ok.includes('veg') || wed.ok.includes('vegan'));
+    assert.equal(new Set(ids).size, 3);
+  }
+});

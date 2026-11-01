@@ -5,7 +5,24 @@ import { reducedMotion } from '../util.js';
 const COLORS = ['#FF6B6B', '#FFA94D', '#FFD43B', '#A9E34B', '#63E6BE', '#4DABF7', '#9775FA', '#F783AC', '#FF8787', '#FFC078', '#8CE99A', '#74C0FC'];
 const TAU = Math.PI * 2;
 
-export function createWheel(canvas, { onTick, onDone, onTap } = {}) {
+/** Split a label into at most two lines that fit maxW; the second line is ellipsized if needed. */
+function wrapLabel(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return [text];
+  const words = text.split(' ');
+  let first = '';
+  for (const w of words) {
+    const t = first ? first + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW) break;
+    first = t;
+  }
+  if (!first) first = words[0];
+  let rest = text.slice(first.length).trim();
+  if (!rest) return [first];
+  while (ctx.measureText(rest).width > maxW && rest.length > 3) rest = rest.slice(0, -2) + '…';
+  return [first, rest];
+}
+
+export function createWheel(canvas, { onTick, onDone, onTap, onFlick } = {}) {
   const ctx = canvas.getContext('2d');
   let segments = [];   // [{ label, emoji, weight }]
   let angles = [];     // [{ start, end }]
@@ -49,14 +66,22 @@ export function createWheel(canvas, { onTick, onDone, onTap } = {}) {
       ctx.rotate(mid);
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       const big = span > 0.5;
-      const fs = Math.max(10, Math.min(18, r * 0.07 * (big ? 1 : 0.85)));
+      const fs = Math.max(11, Math.min(21, r * 0.082 * (big ? 1 : 0.85)));
       ctx.font = `700 ${fs}px Fredoka, ui-rounded, system-ui, sans-serif`;
       ctx.fillStyle = '#2B2140';
-      const maxW = r * 0.55;
-      let label = segments[i].label;
-      while (ctx.measureText(label).width > maxW && label.length > 3) label = label.slice(0, -2) + '…';
-      ctx.fillText(label, r - r * 0.22, 0);
-      ctx.font = `${Math.max(14, r * 0.11)}px system-ui, "Apple Color Emoji", sans-serif`;
+      const maxW = r * 0.56;
+      const lines = wrapLabel(ctx, segments[i].label, maxW);
+      const lh = fs * 1.05;
+      const x = r - r * 0.24;
+      if (lines.length === 1 || span < 0.35) {
+        let label = lines.length === 1 ? lines[0] : segments[i].label;
+        while (ctx.measureText(label).width > maxW && label.length > 3) label = label.slice(0, -2) + '…';
+        ctx.fillText(label, x, 0);
+      } else {
+        ctx.fillText(lines[0], x, -lh / 2);
+        ctx.fillText(lines[1], x, lh / 2);
+      }
+      ctx.font = `${Math.max(16, r * 0.13)}px system-ui, "Apple Color Emoji", sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(segments[i].emoji || '🍽️', r - r * 0.12, 0);
       ctx.restore();
@@ -82,17 +107,19 @@ export function createWheel(canvas, { onTick, onDone, onTap } = {}) {
     return angles.length - 1;
   }
 
-  function spin(winner, { turns = 5 + Math.random() * 3, duration = 4200 + Math.random() * 900 } = {}) {
+  function spin(winner, { turns = 5 + Math.random() * 3, duration = 4200 + Math.random() * 900, dir = 1 } = {}) {
     if (spinning || !segments.length) return;
     spinning = true;
+    canvas.classList.remove('idle');
     if (reducedMotion()) { duration = 900; turns = 1; }
     const { start, end } = angles[winner];
     const pad = (end - start) * 0.15;
     const target = start + pad + Math.random() * (end - start - 2 * pad);
     const current = ((rotation % TAU) + TAU) % TAU;
-    let delta = ((-target - current) % TAU + TAU) % TAU;
     const from = rotation;
-    const to = rotation + turns * TAU + delta;
+    const fwd = ((-target - current) % TAU + TAU) % TAU;
+    const back = ((current + target) % TAU + TAU) % TAU;
+    const to = dir >= 0 ? rotation + turns * TAU + fwd : rotation - turns * TAU - back;
     const t0 = performance.now();
     let lastIdx = indexAt(rotation);
     sfx.whoosh();
@@ -104,12 +131,41 @@ export function createWheel(canvas, { onTick, onDone, onTap } = {}) {
       if (idx !== lastIdx) { lastIdx = idx; sfx.tick(); onTick && onTick(idx); }
       draw();
       if (t < 1) raf = requestAnimationFrame(frame);
-      else { spinning = false; rotation = to % TAU; draw(); onDone && onDone(indexAt(rotation)); }
+      else { spinning = false; rotation = to % TAU; draw(); canvas.classList.add('idle'); onDone && onDone(indexAt(rotation)); }
     }
     raf = requestAnimationFrame(frame);
   }
 
-  canvas.addEventListener('click', () => { if (!spinning && onTap) onTap(); });
+  // Tap to spin, or grab and flick: the wheel follows the finger, then launches with the release velocity.
+  let drag = null;
+  const angleOf = e => { const r = canvas.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); };
+  canvas.addEventListener('pointerdown', e => {
+    if (spinning) return;
+    canvas.setPointerCapture(e.pointerId);
+    canvas.classList.remove('idle');
+    drag = { a: angleOf(e), t: performance.now(), v: 0, moved: 0, start: rotation };
+    e.preventDefault();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drag || spinning) return;
+    const a = angleOf(e), now = performance.now();
+    let d = a - drag.a; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
+    const dt = Math.max(1, now - drag.t);
+    drag.v = 0.6 * drag.v + 0.4 * (d / dt) * 1000; // rad/s, smoothed
+    drag.a = a; drag.t = now; drag.moved += Math.abs(d);
+    rotation += d; draw();
+  });
+  const release = e => {
+    if (!drag) return;
+    const { v, moved } = drag; drag = null;
+    if (spinning) return;
+    if (moved < 0.08) { onTap && onTap(); return; }
+    if (Math.abs(v) > 1.2 && onFlick) onFlick(v);
+    else canvas.classList.add('idle');
+  };
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
+  canvas.classList.add('idle');
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => resize()) : null;
   ro && ro.observe(canvas);
 

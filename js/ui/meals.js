@@ -53,7 +53,8 @@ export function editMeal(id) {
   const serves = h('input', { type: 'number', min: 1, max: 20, value: draft.serves || 4, inputmode: 'numeric' });
   const kidRow = h('div', { class: 'star-row' }, [1, 2, 3, 4, 5].map(n => { const b = h('button', { type: 'button', class: 'star' + (n <= draft.kid ? ' on' : '') }, '⭐'); b.addEventListener('click', () => { draft.kid = n; kidRow.querySelectorAll('.star').forEach((x, i) => x.classList.toggle('on', i < n)); sfx.click(); }); return b; }));
   const ing = h('textarea', { rows: 8, placeholder: '1 lb chicken thighs\n2 cup rice\n1 head broccoli\n…one per line, quantity first' }, (draft.ing || []).map(x => typeof x === 'string' ? x : formatIngredient(x)).join('\n'));
-  const tip = h('input', { type: 'text', value: draft.tip || '', placeholder: 'Optional note or link' });
+  const tip = h('input', { type: 'text', value: draft.tip || '', placeholder: 'Optional note (e.g. “kids like it without the sauce”)' });
+  const link = h('input', { type: 'url', value: draft.link || '', placeholder: 'https://… (optional)', inputmode: 'url' });
   const preview = h('div', { class: 'ing-preview muted small' });
   const updatePreview = () => { const parsed = ing.value.split('\n').map(parseIngredient).filter(Boolean); preview.textContent = parsed.length ? parsed.map(p => `${formatIngredient(p)} (${p.a})`).join(' · ') : ''; };
   ing.addEventListener('input', updatePreview); updatePreview();
@@ -63,7 +64,7 @@ export function editMeal(id) {
     field('Kid-friendly', kidRow, 'A starting guess; the family\'s ratings take over.'),
     field('Works for', h('div', { class: 'chips wrap' }, DIET_TAGS.filter(d => ['veg', 'vegan', 'gf', 'df', 'nf'].includes(d[0])).map(([k, label, e]) => chip({ label, emoji: e, small: true, on: draft.ok.includes(k), onToggle: v => { draft.ok = v ? [...draft.ok, k] : draft.ok.filter(x => x !== k); } })))),
     field('Ingredients', ing, 'For the number of servings above. Aisles are guessed automatically.'), preview,
-    field('Tip', tip),
+    field('Tip', tip), field('Recipe link', link),
     h('div', { class: 'row gap' },
       id ? h('button', { class: 'btn btn-danger', onClick: async () => {
         if (m.custom) { if (await confirm(`Delete ${m.name}?`, { ok: 'Delete', danger: true })) { store.update(s => { s.meals = s.meals.filter(x => x.id !== id); }); sheet.close(); } }
@@ -72,7 +73,7 @@ export function editMeal(id) {
       h('button', { class: 'btn btn-primary grow', onClick: () => {
         const nm = name.value.trim(); if (!nm) { toast('Give it a name', { emoji: '✏️' }); return; }
         const parsed = ing.value.split('\n').map(parseIngredient).filter(Boolean);
-        const data = { name: nm, emoji: draft.emoji, cuisine: cuisine.value, protein: protein.value, time: +time.value || 30, serves: +serves.value || 4, kid: draft.kid, ok: draft.ok, ing: parsed, tip: tip.value.trim() };
+        const data = { name: nm, emoji: draft.emoji, cuisine: cuisine.value, protein: protein.value, time: +time.value || 30, serves: +serves.value || 4, kid: draft.kid, ok: draft.ok, ing: parsed, tip: tip.value.trim(), link: link.value.trim() };
         store.update(s => {
           if (id) Object.assign(s.meals.find(x => x.id === id), data);
           else s.meals.push({ id: 'c-' + uid(), custom: true, hidden: false, ...data });

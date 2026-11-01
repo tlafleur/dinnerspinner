@@ -2,8 +2,9 @@ import { h, DAYS } from '../util.js';
 import { store, restoreSampleMeals, mealById } from '../store.js';
 import { autoServings, lastCooked } from '../engine.js';
 import { openSheet, toast, confirm, field, chip, segmented, section } from './components.js';
-import { DIET_TAGS, WILDCARDS } from '../data/seed.js';
-import { sfx, setEnabled } from '../sound.js';
+import { DIET_TAGS, WILDCARDS, CUISINES } from '../data/seed.js';
+import { sfx, setEnabled, setVoice, say } from '../sound.js';
+import { BADGES } from '../badges.js';
 import { setFxEnabled, burst } from '../fx.js';
 
 export function renderSettings(root) {
@@ -15,7 +16,10 @@ export function renderSettings(root) {
   // Nights
   el.append(section('📅 Dinner nights',
     h('div', { class: 'chips wrap' }, DAYS.map(([id, label]) => chip({ label, small: true, on: s.nights.includes(id), onToggle: v => store.update(x => { x.settings.nights = DAYS.map(d => d[0]).filter(d => v ? (x.settings.nights.includes(d) || d === id) : (x.settings.nights.includes(d) && d !== id)); }, { silent: true }) }))),
-    h('p', { class: 'hint' }, 'Each night is a reel on the slot machine.')));
+    h('p', { class: 'hint' }, 'Each night is a reel on the slot machine.'),
+    h('details', { class: 'details', open: Object.values(s.themes || {}).some(Boolean) }, h('summary', {}, '🎉 Theme nights (Taco Tuesday, anyone?)'),
+      h('div', {}, s.nights.map(d => { const sel = h('select', {}, h('option', { value: '', selected: !s.themes[d] }, 'Anything goes'), h('option', { value: 'veg', selected: s.themes[d] === 'veg' }, '🥦 Veggie night'), CUISINES.map(c => h('option', { value: c, selected: s.themes[d] === c }, c + ' night'))); sel.addEventListener('change', () => store.update(x => { x.settings.themes[d] = sel.value; }, { silent: true })); return h('div', { class: 'theme-row' }, h('span', { class: 'day' }, DAYS.find(x => x[0] === d)[1]), sel); })),
+      h('p', { class: 'hint' }, 'The slot machine only lands on matching meals for that night.'))));
 
   // Servings
   const auto = autoServings(st.members);
@@ -46,15 +50,26 @@ export function renderSettings(root) {
   el.append(section('🔊 Fun stuff',
     h('div', { class: 'chips wrap' },
       chip({ label: 'Sound effects', emoji: '🔊', on: s.sound, onToggle: v => { store.update(x => { x.settings.sound = v; }, { silent: true }); setEnabled(v); if (v) sfx.ding(); } }),
-      chip({ label: 'Confetti', emoji: '🎉', on: s.fx, onToggle: v => { store.update(x => { x.settings.fx = v; }, { silent: true }); setFxEnabled(v); if (v) burst({ count: 60 }); } }))));
+      chip({ label: 'Confetti', emoji: '🎉', on: s.fx, onToggle: v => { store.update(x => { x.settings.fx = v; }, { silent: true }); setFxEnabled(v); if (v) burst({ count: 60 }); } }),
+      chip({ label: 'Announcer voice', emoji: '🎙️', on: s.voice, onToggle: v => { store.update(x => { x.settings.voice = v; }, { silent: true }); setVoice(v); if (v) say('Welcome to Dinner Spinner!'); } })),
+    h('p', { class: 'hint' }, 'The 🔊 button at the top mutes everything in one tap.')));
+
+  // Text size
+  el.append(section('🔤 Text size',
+    segmented([['normal', 'Normal'], ['large', 'Large'], ['huge', 'Huge']], s.textSize || 'normal', v => { store.update(x => { x.settings.textSize = v; }, { silent: true }); document.documentElement.dataset.text = v; }),
+    h('p', { class: 'hint' }, 'Also follows the iOS text size setting.')));
 
   // Stats
   const top = {};
   for (const hst of st.history) top[hst.mealId] = (top[hst.mealId] || 0) + 1;
   const fame = Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, n]) => ({ meal: mealById(id), n })).filter(x => x.meal);
+  el.append(section('🏅 Sticker book',
+    h('p', { class: 'hint' }, `${Object.keys(st.badges).length} of ${BADGES.length} collected`),
+    h('div', { class: 'stickers' }, BADGES.map(b => h('button', { class: 'sticker' + (st.badges[b.id] ? '' : ' locked'), onClick: () => toast(`${b.name}: ${b.desc}${st.badges[b.id] ? ' ✓' : ''}`, { emoji: b.emoji, ms: 2500 }) }, h('span', { class: 'big' }, b.emoji), h('span', { class: 'nm' }, b.name))))));
+
   el.append(section('🏆 Hall of fame',
     h('div', { class: 'stat-grid' },
-      stat(st.stats.cooked, 'dinners cooked'), stat(st.stats.spins, 'wheel spins'), stat(st.stats.pulls, 'lever pulls'), stat(st.stats.jackpots, 'jackpots'), stat(new Set(st.history.map(x => x.mealId)).size, 'different meals'), stat(st.stats.plates, 'plates built')),
+      stat(st.stats.cooked, 'dinners cooked'), stat(st.stats.spins, 'wheel spins'), stat(st.stats.pulls, 'lever pulls'), stat(st.stats.jackpots, 'jackpots'), stat(new Set(st.history.map(x => x.mealId)).size, 'different meals'), stat(st.stats.vetoes, 'vetoes')),
     fame.length ? h('ol', { class: 'fame' }, fame.map(f => h('li', {}, `${f.meal.emoji} ${f.meal.name} `, h('span', { class: 'muted' }, `×${f.n}`)))) : h('p', { class: 'hint' }, 'Cook something to start the leaderboard.')));
 
   // Data

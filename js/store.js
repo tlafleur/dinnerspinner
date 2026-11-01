@@ -16,6 +16,9 @@ function defaultSettings() {
     wildcards: { 'w:takeout': true, 'w:leftovers': false, 'w:kids': false, 'w:eatout': false },
     shopHidePantry: true,
     scaleDown: false,
+    voice: true,
+    textSize: 'normal',
+    themes: {},
   };
 }
 
@@ -32,7 +35,8 @@ export function freshState() {
     tonight: null,       // { id, sideId, date, done }
     grocery: { checked: {}, extras: [], removed: {} },
     history: [],         // [{ mealId, date }]
-    stats: { spins: 0, pulls: 0, cooked: 0, jackpots: 0, sides: 0, plates: 0 },
+    stats: { spins: 0, pulls: 0, cooked: 0, jackpots: 0, sides: 0, plates: 0, weeks: 0, vetoes: 0, faceoffs: 0, flicks: 0 },
+    badges: {},
   };
 }
 
@@ -45,6 +49,8 @@ function migrate(s) {
   s.pantry = s.pantry || {};
   s.grocery = { ...fresh.grocery, ...(s.grocery || {}) };
   s.stats = { ...fresh.stats, ...(s.stats || {}) };
+  s.badges = s.badges || {};
+  s.settings.themes = s.settings.themes || {};
   for (const m of s.members) { m.id = m.id || uid(); m.diets = m.diets || []; m.dislikes = m.dislikes || []; m.ratings = m.ratings || {}; m.plate = m.plate || {}; }
   s.v = VERSION;
   return s;

@@ -17,6 +17,17 @@ storage.
 | 📖 **Meals** | 54 sample dinners and 18 sides. Add your own with free-text ingredients ("1.5 lb chicken thighs"); aisles are guessed automatically. | Making it yours |
 | ⚙️ **Settings** | Dinner nights, servings (auto from family or custom), weeknight time limit, house dietary rules, wildcards, sounds, confetti, stats, export/import. | Customizing |
 
+### Game-show extras
+
+- **Flick to spin.** Grab the wheel and throw it; speed and direction follow your finger.
+- **Announcer voice.** The Web Speech API calls the result like a game show (toggle in Settings, or mute everything with the 🔊 button).
+- **Veto!** Anyone can veto a spin with a buzzer. It records a 🙅 for that person and spins again.
+- **Face-off.** Pit the result against a challenger and let the kids tap the winner.
+- **Sticker book.** 16 collectible stickers for milestones (first flick, Family Jackpot, 3-night streak, World Tour…).
+- **Theme nights.** Taco Tuesday, Veggie Wednesday: the slot machine only lands on matching meals.
+- **I'm feeling lucky.** One tap pulls the lever and locks in the week.
+- **Text size** setting (normal / large / huge), on top of the iOS system size.
+
 Sound effects are synthesized with the Web Audio API, so there are no audio
 files. Confetti is a canvas overlay. Everything respects `prefers-reduced-motion`
 and dark mode.
@@ -62,6 +73,7 @@ js/store.js           state, persistence (localStorage), migrations
 js/engine.js          parsing, scoring, picking, grocery aggregation (pure, tested)
 js/sound.js           Web Audio sound effects
 js/fx.js              confetti
+js/badges.js          sticker definitions
 js/data/seed.js       sample meals, sides, plate components, wildcards
 js/ui/wheel.js        canvas prize wheel
 js/ui/reels.js        slot reel

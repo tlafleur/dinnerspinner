@@ -80,4 +80,27 @@ export const sfx = {
   },
   cheer() { tone({ f: 660, type: 'triangle', d: 0.15, g: 0.2 }); tone({ f: 990, type: 'triangle', t: 0.12, d: 0.3, g: 0.2 }); },
   sparkle() { [1568, 2093, 2637].forEach((f, i) => tone({ f, type: 'sine', t: i * 0.06, d: 0.25, g: 0.08 })); },
+  buzz() { tone({ f: 110, type: 'sawtooth', d: 0.55, g: 0.22 }); tone({ f: 116, type: 'square', d: 0.55, g: 0.12 }); },
+  badge() { [660, 880, 1320, 1760].forEach((f, i) => tone({ f, type: 'triangle', t: i * 0.08, d: 0.35, g: 0.12 })); noise({ t: 0.3, d: 0.4, g: 0.08, f: 5000, type: 'highpass' }); },
+  drum() { for (let i = 0; i < 6; i++) { tone({ f: 90, slide: 50, type: 'sine', t: i * 0.09, d: 0.08, g: 0.3 }); noise({ t: i * 0.09, d: 0.05, g: 0.12, f: 600, type: 'lowpass' }); } },
+  faceoff() { tone({ f: 330, type: 'square', d: 0.12, g: 0.12 }); tone({ f: 330, type: 'square', t: 0.16, d: 0.12, g: 0.12 }); tone({ f: 494, type: 'square', t: 0.32, d: 0.4, g: 0.14 }); },
 };
+
+// ---------- Game-show announcer (Web Speech API) ----------
+let voiceOn = false;
+export function setVoice(v) { voiceOn = !!v; if (!v && 'speechSynthesis' in window) speechSynthesis.cancel(); }
+export function say(text, { delay = 0, pitch = 1.15, rate = 1.05 } = {}) {
+  if (!voiceOn || !enabled || !('speechSynthesis' in window)) return;
+  setTimeout(() => {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.pitch = pitch; u.rate = rate; u.volume = 1;
+      const voices = speechSynthesis.getVoices();
+      const pref = voices.find(v => /en.*(Samantha|Daniel|Karen|Google US)/i.test(v.name + v.lang)) || voices.find(v => v.lang && v.lang.startsWith('en'));
+      if (pref) u.voice = pref;
+      speechSynthesis.speak(u);
+    } catch {}
+  }, delay);
+}
+if ('speechSynthesis' in window) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } catch {} }

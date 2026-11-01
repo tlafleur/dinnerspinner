@@ -1,7 +1,9 @@
 import { h } from './util.js';
 import { store } from './store.js';
-import { unlock, setEnabled, sfx } from './sound.js';
-import { setFxEnabled } from './fx.js';
+import { unlock, setEnabled, setVoice, sfx, say } from './sound.js';
+import { setFxEnabled, burst } from './fx.js';
+import { newlyEarned } from './badges.js';
+import { toast } from './ui/components.js';
 import { renderSpin, cleanupSpin } from './ui/spin.js';
 import { renderWeek } from './ui/week.js';
 import { renderShop } from './ui/shop.js';
@@ -47,7 +49,33 @@ function rerender() {
 function applyPrefs() {
   const s = store.get().settings;
   setEnabled(s.sound);
+  setVoice(s.voice);
   setFxEnabled(s.fx);
+  document.documentElement.dataset.text = s.textSize || 'normal';
+  const b = document.getElementById('soundbtn');
+  if (b) { b.textContent = s.sound ? '🔊' : '🔇'; b.classList.toggle('muted', !s.sound); b.title = s.sound ? 'Mute' : 'Unmute'; }
+}
+
+document.getElementById('soundbtn').addEventListener('click', () => {
+  store.update(s => { s.settings.sound = !s.settings.sound; }, { silent: true });
+  applyPrefs();
+  if (store.get().settings.sound) sfx.ding();
+});
+
+// Award stickers whenever state changes.
+let awarding = false;
+function checkBadges(state) {
+  if (awarding) return;
+  const earned = newlyEarned(state);
+  if (!earned.length) return;
+  awarding = true;
+  store.update(s => { for (const b of earned) s.badges[b.id] = new Date().toISOString().slice(0, 10); }, { silent: true });
+  earned.forEach((b, i) => setTimeout(() => {
+    sfx.badge(); burst({ count: 70, emoji: [b.emoji, '⭐'] });
+    toast(`Sticker unlocked: ${b.name}!`, { emoji: b.emoji, ms: 3000 });
+    if (i === 0) say(`Sticker unlocked! ${b.name}!`, { delay: 300 });
+  }, 900 + i * 2200));
+  setTimeout(() => { awarding = false; }, 1000 + earned.length * 2200);
 }
 
 function onboard() {
@@ -74,6 +102,7 @@ window.addEventListener('click', first);
 
 window.addEventListener('hashchange', route);
 store.subscribe(rerender);
+store.subscribe(checkBadges);
 applyPrefs();
 route();
 onboard();

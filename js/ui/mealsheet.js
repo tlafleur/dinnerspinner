@@ -4,7 +4,7 @@ import { store, mealById, sideById } from '../store.js';
 import { familyVerdict, pantryStatus, ingredientsOf, formatIngredient, servingsOf, scoreMeals, weightedSample, todayISO, violatesRules, activeRules, scaleFactor, effectiveServings } from '../engine.js';
 import { openSheet, toast, avatar, stars } from './components.js';
 import { createWheel } from './wheel.js';
-import { sfx } from '../sound.js';
+import { sfx, say } from '../sound.js';
 import { burst } from '../fx.js';
 import { WILDCARDS } from '../data/seed.js';
 
@@ -53,16 +53,34 @@ export function showMealSheet(id, opts = {}) {
       h('h3', {}, `Ingredients · ${effectiveServings(meal, servings, st.settings.scaleDown)} servings`,
         ps.total ? h('span', { class: 'pill ' + (ps.missing.length === 0 ? 'pill-good' : ps.missing.length <= 2 ? 'pill-warn' : '') }, ps.missing.length === 0 ? '🧺 all in pantry' : `missing ${ps.missing.length}`) : null),
       ingredientList(meal, servings),
-      meal.tip ? h('p', { class: 'tip' }, '💡 ' + meal.tip) : null));
+      meal.tip ? h('p', { class: 'tip' }, '💡 ' + meal.tip) : null,
+      meal.link ? h('a', { class: 'btn btn-ghost btn-sm', href: meal.link, target: '_blank', rel: 'noopener' }, '📖 Open recipe ↗') : null));
   }
   const actions = h('div', { class: 'result-actions' });
   if (opts.onCook) actions.append(h('button', { class: 'btn btn-primary btn-big', onClick: () => { sheet.close(); opts.onCook(meal); } }, opts.cookLabel || '🍽️ Cook it tonight!'));
   if (opts.onSide && !wild) actions.append(h('button', { class: 'btn btn-mint', onClick: () => { sheet.close(); opts.onSide(meal); } }, '🥗 Spin a side'));
+  if (opts.onFaceoff && !wild) actions.append(h('button', { class: 'btn btn-grape', onClick: () => { sheet.close(); opts.onFaceoff(meal); } }, '⚔️ Face-off with another'));
   if (opts.onSpinAgain) actions.append(h('button', { class: 'btn btn-ghost', onClick: () => { sheet.close(); opts.onSpinAgain(); } }, opts.againLabel || '🔁 Nah, spin again'));
+  if (opts.onVeto && !wild && st.members.length) actions.append(h('button', { class: 'btn btn-ghost', onClick: () => { sheet.close(); showVeto(meal, opts.onVeto); } }, '🙅 Veto!'));
   if (opts.extraActions) actions.append(...opts.extraActions(sheet));
   body.append(actions);
   sheet.setBody(body);
   return sheet;
+}
+
+/** Who's vetoing? Records a 🙅 for that person and hands back to the caller. */
+export function showVeto(meal, onVetoed) {
+  const st = store.get();
+  const sheet = openSheet({ title: `Who's vetoing ${meal.emoji} ${meal.name}?` });
+  sheet.setBody(h('div', {},
+    h('div', { class: 'veto-row' }, st.members.map(m => h('button', { class: 'veto-btn', onClick: () => {
+      store.update(s => { const mm = s.members.find(x => x.id === m.id); if (mm) mm.ratings[meal.id] = 'no'; s.stats.vetoes++; });
+      sfx.buzz(); say('Vetoed!');
+      sheet.close();
+      toast(`${m.name} vetoed it. Fewer ${meal.name} spins from now on.`, { emoji: '🙅', ms: 2800 });
+      onVetoed && onVetoed(m);
+    } }, avatar(m, { size: 'md' }), m.name))),
+    h('p', { class: 'hint center' }, 'A veto counts as a thumbs-down from that person.')));
 }
 
 /** After cooking: quick thumbs for each family member. */

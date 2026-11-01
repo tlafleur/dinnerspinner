@@ -299,30 +299,34 @@ export const varietyPenalty = (a, b) => {
 };
 
 /**
- * Pick meals for a week. `slots` is an array of { held: bool, id: mealId|wildcardId|null }.
+ * Pick meals for a week. `slots` is an array of { day, held: bool, id: mealId|wildcardId|null }.
+ * Honors per-day theme nights (settings.themes[day] = cuisine name or 'veg'), holds, wildcards and variety.
  * Returns the array of ids (held slots unchanged).
  */
 export function pickWeek(state, slots, filters = {}, rng = Math.random, today = new Date()) {
-  const heldIds = slots.filter(s => s.held && s.id).map(s => s.id);
-  const scored = scoreMeals(state, { ...filters, excludeIds: heldIds }, today);
-  const wild = [];
+  const themes = state.settings.themes || {};
   const wc = state.settings.wildcards || {};
-  const usedWild = new Set(heldIds.filter(id => id.startsWith('w:')));
-  for (const id of ['w:takeout', 'w:leftovers', 'w:kids', 'w:eatout']) {
-    if (wc[id] && !usedWild.has(id)) wild.push({ wildId: id, weight: 0.5 });
+  const result = slots.map(s => (s.held ? s.id : null));
+  const chosen = result.filter(Boolean).map(id => ({ meal: state.meals.find(m => m.id === id) })).filter(c => c.meal);
+  const usedWild = new Set(result.filter(id => id && id.startsWith('w:')));
+  // Themed nights first: they are the most constrained.
+  const order = slots.map((s, i) => i).filter(i => !slots[i].held)
+    .sort((a, b) => (themes[slots[b].day] ? 1 : 0) - (themes[slots[a].day] ? 1 : 0));
+  for (const i of order) {
+    const theme = themes[slots[i].day] || '';
+    const base = { ...filters, excludeIds: result.filter(Boolean) };
+    let f = { ...base };
+    if (theme === 'veg') f.veg = true; else if (theme) f.cuisine = theme;
+    let items = scoreMeals(state, f, today).map(x => ({ ...x }));
+    if (!items.length && theme) items = scoreMeals(state, base, today).map(x => ({ ...x })); // theme has no meals: fall back
+    if (!theme) for (const id of ['w:takeout', 'w:leftovers', 'w:kids', 'w:eatout']) if (wc[id] && !usedWild.has(id)) items.push({ wildId: id, weight: 0.5 });
+    for (const it of items) if (it.meal) for (const c of chosen) it.weight *= varietyPenalty(c, it);
+    const p = weightedPick(items, rng);
+    if (!p) continue;
+    if (p.wildId) { usedWild.add(p.wildId); result[i] = p.wildId; }
+    else { result[i] = p.meal.id; chosen.push(p); }
   }
-  const need = slots.filter(s => !s.held).length;
-  const items = [...scored, ...wild];
-  // Apply variety penalty against the held meals too.
-  const heldMeals = heldIds.map(id => state.meals.find(m => m.id === id)).filter(Boolean).map(meal => ({ meal }));
-  for (const it of items) if (it.meal) for (const hm of heldMeals) it.weight *= varietyPenalty(hm, it);
-  const picks = weightedSample(items, need, rng, (a, b) => {
-    if (a.wildId || b.wildId) return a.wildId && b.wildId ? 0.3 : 1;
-    return varietyPenalty(a, b);
-  });
-  const ids = picks.map(p => p.wildId || p.meal.id);
-  let i = 0;
-  return slots.map(s => (s.held ? s.id : (ids[i++] || null)));
+  return result;
 }
 
 // ---------- Servings & grocery ----------

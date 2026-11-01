@@ -6,8 +6,9 @@ import { chip, emptyState, toast, confirm, avatar } from './components.js';
 import { createReel } from './reels.js';
 import { showMealSheet, showRatingSheet, showSideWheel, markCooked, showQuickPick, verdictRow } from './mealsheet.js';
 import { WILDCARDS } from '../data/seed.js';
-import { sfx } from '../sound.js';
+import { sfx, say } from '../sound.js';
 import { burst, rain } from '../fx.js';
+const THEME_EMOJI = { American: '🍔', Italian: '🍝', Mexican: '🌮', Asian: '🥡', Indian: '🍛', Mediterranean: '🫒', Comfort: '🍲', BBQ: '🍖', veg: '🥦' };
 
 export const weekUI = { view: null, filters: { kids: false, quick: false, veg: false }, reels: null, held: [], result: null, spinning: false };
 
@@ -45,7 +46,8 @@ function renderMachine(root, st) {
     weekUI.result = nights.map((day, i) => (st.plan && st.plan.slots[i] && st.plan.slots[i].day === day ? st.plan.slots[i].id : null));
     weekUI.held = nights.map(() => false);
   }
-  const reels = nights.map((day, i) => createReel({ label: dayLabel(day) }));
+  const themes = st.settings.themes || {};
+  const reels = nights.map((day, i) => createReel({ label: (themes[day] ? THEME_EMOJI[themes[day]] + ' ' : '') + dayLabel(day) }));
   weekUI.reels = reels;
   reels.forEach((r, i) => r.show(symbolFor(weekUI.result[i])));
 
@@ -70,24 +72,25 @@ function renderMachine(root, st) {
 
   const pullBtn = h('button', { class: 'btn btn-primary btn-big grow' }, '🎰 Pull!');
   const lockBtn = h('button', { class: 'btn btn-mint btn-big grow', disabled: !weekUI.result.every(Boolean) }, '✅ Lock in week');
+  const luckyBtn = h('button', { class: 'btn btn-big lucky full', title: 'Pull once and lock it in' }, "✨ I'm feeling lucky: plan it for me");
   const actions = h('div', { class: 'row gap' }, pullBtn, lockBtn);
-  section.append(actions);
+  section.append(actions, luckyBtn);
   if (st.plan) section.append(h('button', { class: 'btn btn-ghost full', onClick: () => { weekUI.view = 'plan'; renderWeek(root); } }, '← Back to this week'));
   section.append(h('p', { class: 'hint center' }, `${nights.length} nights · ${scoreMeals(st, weekUI.filters).length} meals in the mix`));
 
   async function pull() {
-    if (weekUI.spinning) return;
+    if (weekUI.spinning) return false;
     const fresh = store.get();
     const filters = { kids: weekUI.filters.kids, veg: weekUI.filters.veg, maxTime: weekUI.filters.quick ? (fresh.settings.weekdayMaxTime || 30) : 0 };
-    const slots = nights.map((d, i) => ({ held: weekUI.held[i], id: weekUI.result[i] }));
+    const slots = nights.map((d, i) => ({ day: d, held: weekUI.held[i], id: weekUI.result[i] }));
     const ids = pickWeek(fresh, slots, filters);
-    if (ids.filter((id, i) => !slots[i].held).every(x => !x)) { toast('No meals match those filters', { emoji: '🤷' }); return; }
+    if (ids.filter((id, i) => !slots[i].held).every(x => !x)) { toast('No meals match those filters', { emoji: '🤷' }); return false; }
     weekUI.spinning = true;
     machine.classList.add('spinning');
     lever.classList.add('pulled');
     setTimeout(() => lever.classList.remove('pulled'), 700);
-    sfx.lever();
-    pullBtn.disabled = true; lockBtn.disabled = true;
+    sfx.lever(); say('Here we go!');
+    pullBtn.disabled = true; lockBtn.disabled = true; luckyBtn.disabled = true;
     payline.textContent = 'Spinning…';
     store.update(s => { s.stats.pulls++; }, { silent: true });
     const pool = scoreMeals(fresh, {}).map(p => symbolFor(p.meal.id));
@@ -102,9 +105,10 @@ function renderMachine(root, st) {
     await Promise.all(promises);
     weekUI.spinning = false;
     machine.classList.remove('spinning');
-    pullBtn.disabled = false;
+    pullBtn.disabled = false; luckyBtn.disabled = false;
     lockBtn.disabled = !weekUI.result.every(Boolean);
     evaluate(fresh);
+    return true;
   }
 
   function evaluate(fresh) {
@@ -120,6 +124,7 @@ function renderMachine(root, st) {
       rain({ count: 80, emoji: ['🏆', '⭐', '🎉'] });
       burst({ count: 140, emoji: ['🏆', '⭐'] });
       payline.textContent = '🏆 FAMILY JACKPOT! Every kid loves every meal!';
+      say('Family jackpot!', { delay: 400 });
       store.update(s => { s.stats.jackpots++; }, { silent: true });
     } else if (allKidsOk) {
       sfx.fanfare();
@@ -140,8 +145,9 @@ function renderMachine(root, st) {
     store.update(s => {
       s.plan = { weekOf: todayISO(), slots: nights.map((day, i) => ({ day, id: ids[i], sideId: null, cooked: false })) };
       s.grocery.checked = {};
+      s.stats.weeks++;
     });
-    sfx.fanfare();
+    sfx.fanfare(); say('Your week is locked in. Happy shopping!');
     burst({ count: 100, emoji: ['🛒', '📅', '🎉'] });
     toast('Week locked in! Your shopping list is ready.', { emoji: '🛒', ms: 3000 });
     weekUI.view = 'plan';
@@ -151,6 +157,7 @@ function renderMachine(root, st) {
 
   lever.addEventListener('click', pull);
   pullBtn.addEventListener('click', pull);
+  luckyBtn.addEventListener('click', async () => { weekUI.held = nights.map(() => false); const ok = await pull(); if (ok && weekUI.result.every(Boolean)) setTimeout(lockIn, 1200); });
   lockBtn.addEventListener('click', lockIn);
   return section;
 }
