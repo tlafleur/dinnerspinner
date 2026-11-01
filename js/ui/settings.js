@@ -3,7 +3,7 @@ import { store, restoreSampleMeals, mealById } from '../store.js';
 import { autoServings, lastCooked } from '../engine.js';
 import { openSheet, toast, confirm, field, chip, segmented, section } from './components.js';
 import { DIET_TAGS, WILDCARDS, CUISINES } from '../data/seed.js';
-import { sfx, setEnabled, setVoice, say } from '../sound.js';
+import { sfx, setEnabled } from '../sound.js';
 import { BADGES } from '../badges.js';
 import { setFxEnabled, burst } from '../fx.js';
 
@@ -50,8 +50,7 @@ export function renderSettings(root) {
   el.append(section('🔊 Fun stuff',
     h('div', { class: 'chips wrap' },
       chip({ label: 'Sound effects', emoji: '🔊', on: s.sound, onToggle: v => { store.update(x => { x.settings.sound = v; }, { silent: true }); setEnabled(v); if (v) sfx.ding(); } }),
-      chip({ label: 'Confetti', emoji: '🎉', on: s.fx, onToggle: v => { store.update(x => { x.settings.fx = v; }, { silent: true }); setFxEnabled(v); if (v) burst({ count: 60 }); } }),
-      chip({ label: 'Announcer voice', emoji: '🎙️', on: s.voice, onToggle: v => { store.update(x => { x.settings.voice = v; }, { silent: true }); setVoice(v); if (v) say('Welcome to Dinner Spinner!'); } })),
+      chip({ label: 'Confetti', emoji: '🎉', on: s.fx, onToggle: v => { store.update(x => { x.settings.fx = v; }, { silent: true }); setFxEnabled(v); if (v) burst({ count: 60 }); } })),
     h('p', { class: 'hint' }, 'The 🔊 button at the top mutes everything in one tap.')));
 
   // Text size

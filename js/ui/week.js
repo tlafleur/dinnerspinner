@@ -6,7 +6,7 @@ import { chip, emptyState, toast, confirm, avatar } from './components.js';
 import { createReel } from './reels.js';
 import { showMealSheet, showRatingSheet, showSideWheel, markCooked, showQuickPick, verdictRow } from './mealsheet.js';
 import { WILDCARDS } from '../data/seed.js';
-import { sfx, say } from '../sound.js';
+import { sfx } from '../sound.js';
 import { burst, rain } from '../fx.js';
 const THEME_EMOJI = { American: '🍔', Italian: '🍝', Mexican: '🌮', Asian: '🥡', Indian: '🍛', Mediterranean: '🫒', Comfort: '🍲', BBQ: '🍖', veg: '🥦' };
 
@@ -89,7 +89,7 @@ function renderMachine(root, st) {
     machine.classList.add('spinning');
     lever.classList.add('pulled');
     setTimeout(() => lever.classList.remove('pulled'), 700);
-    sfx.lever(); say('Here we go!');
+    sfx.lever();
     pullBtn.disabled = true; lockBtn.disabled = true; luckyBtn.disabled = true;
     payline.textContent = 'Spinning…';
     store.update(s => { s.stats.pulls++; }, { silent: true });
@@ -124,7 +124,6 @@ function renderMachine(root, st) {
       rain({ count: 80, emoji: ['🏆', '⭐', '🎉'] });
       burst({ count: 140, emoji: ['🏆', '⭐'] });
       payline.textContent = '🏆 FAMILY JACKPOT! Every kid loves every meal!';
-      say('Family jackpot!', { delay: 400 });
       store.update(s => { s.stats.jackpots++; }, { silent: true });
     } else if (allKidsOk) {
       sfx.fanfare();
@@ -147,7 +146,7 @@ function renderMachine(root, st) {
       s.grocery.checked = {};
       s.stats.weeks++;
     });
-    sfx.fanfare(); say('Your week is locked in. Happy shopping!');
+    sfx.fanfare();
     burst({ count: 100, emoji: ['🛒', '📅', '🎉'] });
     toast('Week locked in! Your shopping list is ready.', { emoji: '🛒', ms: 3000 });
     weekUI.view = 'plan';

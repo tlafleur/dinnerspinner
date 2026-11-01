@@ -20,7 +20,7 @@ storage.
 ### Game-show extras
 
 - **Flick to spin.** Grab the wheel and throw it; speed and direction follow your finger.
-- **Announcer voice.** The Web Speech API calls the result like a game show (toggle in Settings, or mute everything with the 🔊 button).
+- **One-tap mute.** The 🔊 button in the top bar silences everything.
 - **Veto!** Anyone can veto a spin with a buzzer. It records a 🙅 for that person and spins again.
 - **Face-off.** Pit the result against a challenger and let the kids tap the winner.
 - **Sticker book.** 16 collectible stickers for milestones (first flick, Family Jackpot, 3-night streak, World Tour…).

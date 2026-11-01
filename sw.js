@@ -1,5 +1,5 @@
 // Offline-first app shell. Bump CACHE when files change.
-const CACHE = 'dinnerspinner-v3';
+const CACHE = 'dinnerspinner-v4';
 const FILES = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/util.js', './js/store.js', './js/engine.js', './js/sound.js', './js/fx.js', './js/badges.js', './js/data/seed.js',

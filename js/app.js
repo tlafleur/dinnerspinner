@@ -1,6 +1,6 @@
 import { h } from './util.js';
 import { store } from './store.js';
-import { unlock, resume, setEnabled, setVoice, sfx, say } from './sound.js';
+import { unlock, resume, setEnabled, sfx } from './sound.js';
 import { setFxEnabled, burst } from './fx.js';
 import { newlyEarned } from './badges.js';
 import { toast } from './ui/components.js';
@@ -49,7 +49,6 @@ function rerender() {
 function applyPrefs() {
   const s = store.get().settings;
   setEnabled(s.sound);
-  setVoice(s.voice);
   setFxEnabled(s.fx);
   document.documentElement.dataset.text = s.textSize || 'normal';
   const b = document.getElementById('soundbtn');
@@ -73,7 +72,6 @@ function checkBadges(state) {
   earned.forEach((b, i) => setTimeout(() => {
     sfx.badge(); burst({ count: 70, emoji: [b.emoji, '⭐'] });
     toast(`Sticker unlocked: ${b.name}!`, { emoji: b.emoji, ms: 3000 });
-    if (i === 0) say(`Sticker unlocked! ${b.name}!`, { delay: 300 });
   }, 900 + i * 2200));
   setTimeout(() => { awarding = false; }, 1000 + earned.length * 2200);
 }

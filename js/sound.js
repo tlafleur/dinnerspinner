@@ -89,25 +89,3 @@ export const sfx = {
   drum() { for (let i = 0; i < 6; i++) { tone({ f: 90, slide: 50, type: 'sine', t: i * 0.09, d: 0.08, g: 0.3 }); noise({ t: i * 0.09, d: 0.05, g: 0.12, f: 600, type: 'lowpass' }); } },
   faceoff() { tone({ f: 330, type: 'square', d: 0.12, g: 0.12 }); tone({ f: 330, type: 'square', t: 0.16, d: 0.12, g: 0.12 }); tone({ f: 494, type: 'square', t: 0.32, d: 0.4, g: 0.14 }); },
 };
-
-// ---------- Game-show announcer (Web Speech API) ----------
-let voiceOn = false;
-export function setVoice(v) { voiceOn = !!v; if (!v && 'speechSynthesis' in window) speechSynthesis.cancel(); }
-export function say(text, { delay = 0, pitch = 1.15, rate = 1.05 } = {}) {
-  if (!voiceOn || !enabled || !('speechSynthesis' in window)) return;
-  setTimeout(() => {
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.pitch = pitch; u.rate = rate; u.volume = 1;
-      const voices = speechSynthesis.getVoices();
-      const pref = voices.find(v => /en.*(Samantha|Daniel|Karen|Google US)/i.test(v.name + v.lang)) || voices.find(v => v.lang && v.lang.startsWith('en'));
-      if (pref) u.voice = pref;
-      // Speech can interrupt the Web Audio context on iOS; wake it back up when the line ends.
-      u.onend = () => setTimeout(resume, 50);
-      u.onerror = () => setTimeout(resume, 50);
-      speechSynthesis.speak(u);
-    } catch {}
-  }, delay);
-}
-if ('speechSynthesis' in window) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } catch {} }

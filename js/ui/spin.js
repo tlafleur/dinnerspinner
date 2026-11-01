@@ -5,7 +5,7 @@ import { scoreMeals, weightedSample, todayISO } from '../engine.js';
 import { chip, emptyState, toast } from './components.js';
 import { createWheel } from './wheel.js';
 import { showMealSheet, showRatingSheet, showSideWheel, markCooked, verdictRow } from './mealsheet.js';
-import { sfx, say } from '../sound.js';
+import { sfx } from '../sound.js';
 import { burst } from '../fx.js';
 import { CUISINES } from '../data/seed.js';
 import { openSheet } from './components.js';
@@ -93,7 +93,6 @@ export function renderSpin(root) {
   function spin(picks, flick = 0) {
     if (wheel.isSpinning()) return;
     sfx.click();
-    say('Round and round it goes!', { delay: 200 });
     document.body.classList.add('spinning');
     // choose winner by weight, so bigger slices really are likelier
     const total = picks.reduce((s, p) => s + Math.max(0.35, Math.sqrt(p.weight)), 0);
@@ -114,7 +113,6 @@ function onLanded(p, canvas, root) {
   sfx.fanfare();
   const r = canvas.getBoundingClientRect();
   burst({ x: r.left + r.width / 2, y: r.top + r.height / 2, count: 120, emoji: [p.meal.emoji, '🎉', '✨'] });
-  say(`${p.meal.name}!`, { delay: 300 });
   setTimeout(() => showResult(p.meal.id, root), 650);
 }
 
@@ -135,14 +133,14 @@ function faceoff(champ, root) {
   const pick = weightedSample(cands, 1)[0];
   if (!pick) { toast('No challenger available', { emoji: '🤷' }); return; }
   const chal = pick.meal;
-  sfx.faceoff(); say(`${champ.name} versus ${chal.name}. Tap the winner!`, { delay: 100 });
+  sfx.faceoff();
   const sheet = openSheet({ title: '⚔️ Face-off! Tap the winner' });
   const card = m => h('button', { class: 'faceoff-card' }, h('span', { class: 'big' }, m.emoji), m.name, h('span', { class: 'muted small' }, timeLabel(m.time)));
   const a = card(champ), b = card(chal);
   const wrap = h('div', { class: 'faceoff' }, a, h('span', { class: 'faceoff-vs' }, 'VS'), b);
   const choose = (winner, wEl, lEl) => {
     wEl.classList.add('winner'); lEl.classList.add('loser');
-    sfx.fanfare(); say(`${winner.name} wins!`);
+    sfx.fanfare();
     const r = wEl.getBoundingClientRect();
     burst({ x: r.left + r.width / 2, y: r.top + r.height / 2, count: 90, emoji: [winner.emoji, '🏆'] });
     store.update(s => { s.stats.faceoffs++; }, { silent: true });
@@ -171,7 +169,6 @@ function cookTonight(mealId, root, sideId = null) {
   sfx.cheer();
   burst({ count: 60, emoji: ['🍽️', '👩‍🍳'] });
   const m = mealById(mealId);
-  say(`${m.name} it is! Dinner is served.`);
   toast(`${m.emoji} ${m.name} it is! Ingredients are in the details.`, { ms: 3000 });
   renderSpin(root);
 }

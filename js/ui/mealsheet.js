@@ -4,7 +4,7 @@ import { store, mealById, sideById } from '../store.js';
 import { familyVerdict, pantryStatus, ingredientsOf, formatIngredient, servingsOf, scoreMeals, weightedSample, todayISO, violatesRules, activeRules, scaleFactor, effectiveServings } from '../engine.js';
 import { openSheet, toast, avatar, stars } from './components.js';
 import { createWheel } from './wheel.js';
-import { sfx, say } from '../sound.js';
+import { sfx } from '../sound.js';
 import { burst } from '../fx.js';
 import { WILDCARDS } from '../data/seed.js';
 
@@ -75,7 +75,7 @@ export function showVeto(meal, onVetoed) {
   sheet.setBody(h('div', {},
     h('div', { class: 'veto-row' }, st.members.map(m => h('button', { class: 'veto-btn', onClick: () => {
       store.update(s => { const mm = s.members.find(x => x.id === m.id); if (mm) mm.ratings[meal.id] = 'no'; s.stats.vetoes++; });
-      sfx.buzz(); say('Vetoed!');
+      sfx.buzz();
       sheet.close();
       toast(`${m.name} vetoed it. Fewer ${meal.name} spins from now on.`, { emoji: '🙅', ms: 2800 });
       onVetoed && onVetoed(m);

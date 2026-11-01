@@ -16,7 +16,6 @@ function defaultSettings() {
     wildcards: { 'w:takeout': true, 'w:leftovers': false, 'w:kids': false, 'w:eatout': false },
     shopHidePantry: true,
     scaleDown: false,
-    voice: true,
     textSize: 'normal',
     themes: {},
   };
