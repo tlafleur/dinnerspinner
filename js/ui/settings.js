@@ -3,7 +3,7 @@ import { store, restoreSampleMeals, mealById } from '../store.js';
 import { autoServings, lastCooked } from '../engine.js';
 import { openSheet, toast, confirm, field, chip, segmented, section } from './components.js';
 import { DIET_TAGS, WILDCARDS, CUISINES } from '../data/seed.js';
-import { sfx, setEnabled } from '../sound.js';
+import { sfx, setEnabled, unlock, audioState } from '../sound.js';
 import { BADGES } from '../badges.js';
 import { setFxEnabled, burst } from '../fx.js';
 
@@ -51,7 +51,8 @@ export function renderSettings(root) {
     h('div', { class: 'chips wrap' },
       chip({ label: 'Sound effects', emoji: '🔊', on: s.sound, onToggle: v => { store.update(x => { x.settings.sound = v; }, { silent: true }); setEnabled(v); if (v) sfx.ding(); } }),
       chip({ label: 'Confetti', emoji: '🎉', on: s.fx, onToggle: v => { store.update(x => { x.settings.fx = v; }, { silent: true }); setFxEnabled(v); if (v) burst({ count: 60 }); } })),
-    h('p', { class: 'hint' }, 'The 🔊 button at the top mutes everything in one tap.')));
+    h('div', { class: 'row gap-sm wrap' }, h('button', { class: 'btn btn-ghost btn-sm', onClick: () => { unlock(); sfx.fanfare(); setTimeout(() => toast(`Audio engine: ${audioState()} · effects ${store.get().settings.sound ? 'on' : 'muted'}`, { emoji: '🔔', ms: 3500 }), 400); } }, '🔔 Test sound')),
+    h('p', { class: 'hint' }, 'The 🔊 button at the top mutes everything in one tap. Sounds play even with the ring/silent switch on silent.')));
 
   // Text size
   el.append(section('🔤 Text size',

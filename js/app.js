@@ -1,6 +1,6 @@
 import { h } from './util.js';
 import { store } from './store.js';
-import { unlock, resume, setEnabled, sfx } from './sound.js';
+import { unlock, resume, isUnlocked, setEnabled, sfx } from './sound.js';
 import { setFxEnabled, burst } from './fx.js';
 import { newlyEarned } from './badges.js';
 import { toast } from './ui/components.js';
@@ -95,11 +95,8 @@ function onboard() {
 
 // Unlock audio on the first touch (iOS requirement), and re-wake it on every later tap
 // in case iOS interrupted it (speech, a call, backgrounding).
-let unlocked = false;
-const wake = () => { if (!unlocked) { unlock(); unlocked = true; } else resume(); };
-window.addEventListener('touchstart', wake, { passive: true });
-window.addEventListener('pointerdown', wake, { passive: true });
-window.addEventListener('click', wake);
+const wake = () => { if (!isUnlocked()) unlock(); else resume(); };
+for (const ev of ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click', 'keydown']) window.addEventListener(ev, wake, { passive: true });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) resume(); });
 
 window.addEventListener('hashchange', route);

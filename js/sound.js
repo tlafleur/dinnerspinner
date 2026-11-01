@@ -18,8 +18,18 @@ function ensure() {
 /** Wake the context back up; safe to call from any user gesture. */
 export function resume() { try { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); } catch {} }
 
-/** Call from a user gesture (iOS requires it) to unlock audio. */
-export function unlock() { try { const c = ensure(); if (c) { const b = c.createBuffer(1, 1, 22050); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } } catch {} }
+/** Call from a user gesture (iOS requires it) to unlock audio. Safe to call repeatedly. */
+export function unlock() {
+  try {
+    const c = ensure(); if (!c) return;
+    // iOS 17+: play through the ring/silent switch like a game would. The app has its own mute button.
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch {}
+    if (c.state !== 'running') c.resume().catch(() => {});
+    const b = c.createBuffer(1, 1, 22050); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0);
+  } catch {}
+}
+export const audioState = () => (ctx ? ctx.state : 'not created');
+export const isUnlocked = () => !!ctx && ctx.state === 'running';
 export function setEnabled(v) { enabled = !!v; }
 export const isEnabled = () => enabled;
 
