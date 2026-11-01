@@ -10,9 +10,13 @@ function ensure() {
     master.gain.value = 0.6;
     master.connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  // Safari reports 'interrupted' (phone call, speech synthesis, Siri) as well as 'suspended'.
+  if (ctx.state !== 'running') ctx.resume().catch(() => {});
   return ctx;
 }
+
+/** Wake the context back up; safe to call from any user gesture. */
+export function resume() { try { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); } catch {} }
 
 /** Call from a user gesture (iOS requires it) to unlock audio. */
 export function unlock() { try { const c = ensure(); if (c) { const b = c.createBuffer(1, 1, 22050); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } } catch {} }
@@ -99,6 +103,9 @@ export function say(text, { delay = 0, pitch = 1.15, rate = 1.05 } = {}) {
       const voices = speechSynthesis.getVoices();
       const pref = voices.find(v => /en.*(Samantha|Daniel|Karen|Google US)/i.test(v.name + v.lang)) || voices.find(v => v.lang && v.lang.startsWith('en'));
       if (pref) u.voice = pref;
+      // Speech can interrupt the Web Audio context on iOS; wake it back up when the line ends.
+      u.onend = () => setTimeout(resume, 50);
+      u.onerror = () => setTimeout(resume, 50);
       speechSynthesis.speak(u);
     } catch {}
   }, delay);

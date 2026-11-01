@@ -1,6 +1,6 @@
 import { h } from './util.js';
 import { store } from './store.js';
-import { unlock, setEnabled, setVoice, sfx, say } from './sound.js';
+import { unlock, resume, setEnabled, setVoice, sfx, say } from './sound.js';
 import { setFxEnabled, burst } from './fx.js';
 import { newlyEarned } from './badges.js';
 import { toast } from './ui/components.js';
@@ -95,10 +95,14 @@ function onboard() {
       h('button', { class: 'btn btn-ghost grow', onClick: () => sheet.close() }, '🎡 Just spin!'))));
 }
 
-// Unlock audio on the first touch (iOS requirement).
-const first = () => { unlock(); window.removeEventListener('touchstart', first); window.removeEventListener('click', first); };
-window.addEventListener('touchstart', first, { passive: true });
-window.addEventListener('click', first);
+// Unlock audio on the first touch (iOS requirement), and re-wake it on every later tap
+// in case iOS interrupted it (speech, a call, backgrounding).
+let unlocked = false;
+const wake = () => { if (!unlocked) { unlock(); unlocked = true; } else resume(); };
+window.addEventListener('touchstart', wake, { passive: true });
+window.addEventListener('pointerdown', wake, { passive: true });
+window.addEventListener('click', wake);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) resume(); });
 
 window.addEventListener('hashchange', route);
 store.subscribe(rerender);
