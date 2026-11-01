@@ -1,0 +1,12 @@
+{
+  "name": "dinnerspinner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Spin the wheel, pull the lever, feed the family. A playful family meal planner for iPhone/iPad, hosted on GitHub Pages.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "serve": "python3 -m http.server 8080",
+    "icons": "node scripts/make-icons.js"
+  }
+}
